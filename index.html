@@ -567,13 +567,13 @@ input[type=range]{width:100%;accent-color:var(--gold);height:28px}
 .pg:not(.cover){
   background-color:#FEFBF6 !important;
   background-image:
-    linear-gradient(90deg,rgba(60,40,15,.26),rgba(60,40,15,.07) 4%,rgba(0,0,0,0) 13%),
+    linear-gradient(90deg,rgba(60,40,15,.34),rgba(60,40,15,.12) 3.5%,rgba(255,255,255,.34) 9.5%,rgba(255,255,255,0) 22%),
     radial-gradient(120% 90% at 50% 40%,rgba(255,255,255,.55),rgba(255,255,255,0) 70%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .36 0 0 0 0 .22 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   box-shadow:inset 0 0 38px rgba(90,60,25,.09)}
 .pg.back:not(.cover){
   background-image:
-    linear-gradient(270deg,rgba(60,40,15,.26),rgba(60,40,15,.07) 4%,rgba(0,0,0,0) 13%),
+    linear-gradient(270deg,rgba(60,40,15,.34),rgba(60,40,15,.12) 3.5%,rgba(255,255,255,.34) 9.5%,rgba(255,255,255,0) 22%),
     radial-gradient(120% 90% at 50% 40%,rgba(255,255,255,.55),rgba(255,255,255,0) 70%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .36 0 0 0 0 .22 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 /* stacked page edges on the side of the closed book */
@@ -586,6 +586,8 @@ input[type=range]{width:100%;accent-color:var(--gold);height:28px}
 .leaf.turning .pg.front::after{background:linear-gradient(270deg,rgba(40,25,10,.0),rgba(40,25,10,.28) 60%,rgba(40,25,10,.0))}
 .leaf.turning .pg.back::after{background:linear-gradient(90deg,rgba(40,25,10,.0),rgba(40,25,10,.28) 60%,rgba(40,25,10,.0))}
 @keyframes turnshade{0%{opacity:0}35%{opacity:1}100%{opacity:0}}
+
+.bend .pg{cursor:default}
 .fly{position:fixed;left:0;top:0;z-index:110;max-width:none;transform-origin:0 0;transition:transform 1.05s cubic-bezier(.65,0,.2,1);will-change:transform;pointer-events:none;
   box-shadow:0 30px 70px -30px rgba(0,0,0,.6)}
 
@@ -1895,10 +1897,40 @@ function update(){const c=document.getElementById('bk-count');if(!c)return;
   if(flipped===0){c.textContent=it()?'Clicca la copertina per aprire il manuale del brand':'Click the cover to open the brand manual';return}
   const L=flipped===1?0:2*(flipped-1),R=2*flipped-1<=pages.length?2*flipped-1:0;
   c.textContent=[L,R].filter(Boolean).join(' – ')+' / '+pages.length+'   ·   '+(it()?'clicca sulle pagine per sfogliare':'click the pages to turn them')}
+
+/* a turning page really bends: the page is cut into strips that rotate one inside the other, the outer ones leading */
+function bend(l,d){
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches||!bk)return;
+  const f=l.querySelector(':scope > .pg.front'),b=l.querySelector(':scope > .pg.back');if(!f||!b)return;
+  const w=l.offsetWidth,h=l.offsetHeight;if(!w||!h)return;
+  const N=12,sw=w/N;
+  const clean=n=>{n.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));n.querySelectorAll('video,audio,iframe').forEach(e=>e.remove());return n};
+  const fc=clean(f.cloneNode(true)),bc=clean(b.cloneNode(true));
+  const O=document.createElement('div');O.className='bend';
+  O.style.cssText='position:absolute;top:0;left:50%;width:'+w+'px;height:'+h+'px;transform-origin:0 50%;transform-style:preserve-3d;pointer-events:none;z-index:1000';
+  const face=(clone,left,rot)=>{const fa=document.createElement('div');
+    fa.style.cssText='position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden'+(rot?';transform:rotateY(180deg)':'');
+    const c=clone.cloneNode(true);c.style.cssText+=';inset:auto;top:0;height:'+h+'px;width:'+w+'px;left:'+left+'px;transform:none;backface-visibility:visible;border-radius:0;cursor:default';
+    fa.appendChild(c);const sh=document.createElement('i');sh.style.cssText='position:absolute;inset:0;background:#1a0f06;opacity:0;pointer-events:none';fa.appendChild(sh);return fa};
+  const strips=[];let parent=O;
+  for(let i=0;i<N;i++){
+    const s=document.createElement('div');
+    s.style.cssText='position:absolute;top:0;left:'+(i?sw:0)+'px;width:'+sw+'px;height:'+h+'px;transform-origin:0 50%;transform-style:preserve-3d';
+    const ff=face(fc,-i*sw,false),bf=face(bc,-(w-(i+1)*sw),true);
+    s.appendChild(ff);s.appendChild(bf);parent.appendChild(s);strips.push({s:s,a:ff.lastChild,b:bf.lastChild});parent=s}
+  bk.appendChild(O);l.style.visibility='hidden';
+  const t0=performance.now(),D=1050,sg=d>0?1:-1,E=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+  (function fr(now){
+    const p=Math.min(1,(now-t0)/D),e=E(p),th=d>0?-180*e:-180*(1-e),bd=-sg*2.3*Math.sin(p*Math.PI);let cum=0;
+    for(let i=0;i<N;i++){const a=th/N+bd*(.45+.55*i/N);strips[i].s.style.transform='rotateY('+a+'deg)';cum+=a;
+      const sh=Math.min(.45,.4*Math.abs(Math.sin(cum*Math.PI/180)));strips[i].a.style.opacity=sh;strips[i].b.style.opacity=sh}
+    if(p<1)requestAnimationFrame(fr);else{O.remove();l.style.visibility=''}
+  })(t0);
+}
 function turn(d){const t=flipped+d;if(t<0||t>leaves.length)return false;
   const l=d>0?leaves[flipped]:leaves[flipped-1];l.style.zIndex=999;
   l.classList.add('turning');clearTimeout(l._tt);l._tt=setTimeout(()=>l.classList.remove('turning'),1100);
-  if(d>0)l.classList.add('flipped');else l.classList.remove('flipped');flipped=t;
+  if(d>0)l.classList.add('flipped');else l.classList.remove('flipped');bend(l,d);flipped=t;
   bk.classList.toggle('closed',flipped===0);update();
   clearTimeout(l._t);l._t=setTimeout(z,1080);return true}
 function goTo(target){target=Math.max(0,Math.min(leaves.length,target));if(target===flipped)return;
