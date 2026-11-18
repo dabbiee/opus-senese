@@ -399,6 +399,8 @@ input[type=range]{width:100%;accent-color:var(--gold);height:28px}
   -webkit-mask-image:radial-gradient(circle 280px at var(--mx,-999px) var(--my,-999px),#000 0,rgba(0,0,0,.6) 42%,transparent 100%);
   mask-image:radial-gradient(circle 280px at var(--mx,-999px) var(--my,-999px),#000 0,rgba(0,0,0,.6) 42%,transparent 100%);
 }
+.hero-slab,.lk-art:not(.lk-neg),.tag-slab{transition:filter .45s ease,transform .25s ease-out}
+.hero-slab:hover,.lk-art:not(.lk-neg):hover,.tag-slab:hover{filter:invert(1) hue-rotate(180deg)}
 
 /* ---------- book mode: one section per page, a leather book lying on the marble ---------- */
 .book-mode,.book-mode body{overflow:hidden;height:100%}
@@ -581,6 +583,9 @@ input[type=range]{width:100%;accent-color:var(--gold);height:28px}
 .bk-static::after{right:-6px;top:.6%;bottom:.6%;opacity:.7;z-index:-1}
 
 .bend .pg{cursor:default}
+
+.m-vars figure:nth-child(1) .m-t,.m-vars figure:nth-child(3) .m-t{transition:filter .45s ease}
+.m-vars figure:nth-child(1) .m-t:hover,.m-vars figure:nth-child(3) .m-t:hover{filter:invert(1) hue-rotate(180deg)}
 .fly{position:fixed;left:0;top:0;z-index:110;max-width:none;transform-origin:0 0;transition:transform 1.05s cubic-bezier(.65,0,.2,1);will-change:transform;pointer-events:none;
   box-shadow:0 30px 70px -30px rgba(0,0,0,.6)}
 
