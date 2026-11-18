@@ -563,7 +563,6 @@ input[type=range]{width:100%;accent-color:var(--gold);height:28px}
 .m-livecard .bcard{width:100%;max-width:300px;display:block}
 .mp .bb img,.mp .kiosk-stage{max-width:none}
 
-/* ---------- paper: texture, gutter shadow, page edges, turning shade ---------- */
 .pg:not(.cover){
   background-color:#FEFBF6 !important;
   background-image:
@@ -580,12 +579,6 @@ input[type=range]{width:100%;accent-color:var(--gold);height:28px}
 .bk-static::before,.bk-static::after{content:"";position:absolute;top:1.2%;bottom:1.2%;right:-3px;width:6px;pointer-events:none;border-radius:0 3px 3px 0;
   background:repeating-linear-gradient(90deg,#efe8da 0 1px,#d9cfbb 1px 2px)}
 .bk-static::after{right:-6px;top:.6%;bottom:.6%;opacity:.7;z-index:-1}
-/* the page itself shades while it turns */
-.leaf .pg::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;z-index:4}
-.leaf.turning .pg::after{animation:turnshade 1.05s cubic-bezier(.6,.02,.3,1)}
-.leaf.turning .pg.front::after{background:linear-gradient(270deg,rgba(40,25,10,.0),rgba(40,25,10,.28) 60%,rgba(40,25,10,.0))}
-.leaf.turning .pg.back::after{background:linear-gradient(90deg,rgba(40,25,10,.0),rgba(40,25,10,.28) 60%,rgba(40,25,10,.0))}
-@keyframes turnshade{0%{opacity:0}35%{opacity:1}100%{opacity:0}}
 
 .bend .pg{cursor:default}
 .fly{position:fixed;left:0;top:0;z-index:110;max-width:none;transform-origin:0 0;transition:transform 1.05s cubic-bezier(.65,0,.2,1);will-change:transform;pointer-events:none;
@@ -1898,88 +1891,9 @@ function update(){const c=document.getElementById('bk-count');if(!c)return;
   const L=flipped===1?0:2*(flipped-1),R=2*flipped-1<=pages.length?2*flipped-1:0;
   c.textContent=[L,R].filter(Boolean).join(' – ')+' / '+pages.length+'   ·   '+(it()?'clicca sulle pagine per sfogliare':'click the pages to turn them')}
 
-/* a turning page really bends: the page is cut into strips that rotate one inside the other, the outer ones leading */
-function bend(l,d){
-  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches||!bk)return;
-  const f=l.querySelector(':scope > .pg.front'),b=l.querySelector(':scope > .pg.back');if(!f||!b)return;
-  const w=l.offsetWidth,h=l.offsetHeight;if(!w||!h)return;
-  const N=12,sw=w/N;
-  const clean=n=>{n.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));n.querySelectorAll('video,audio,iframe').forEach(e=>e.remove());return n};
-  const fc=clean(f.cloneNode(true)),bc=clean(b.cloneNode(true));
-  const O=document.createElement('div');O.className='bend';
-  O.style.cssText='position:absolute;top:0;left:50%;width:'+w+'px;height:'+h+'px;transform-origin:0 50%;transform-style:preserve-3d;pointer-events:none;z-index:1000';
-  const face=(clone,left,rot)=>{const fa=document.createElement('div');
-    fa.style.cssText='position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden'+(rot?';transform:rotateY(180deg)':'');
-    const c=clone.cloneNode(true);c.style.cssText+=';inset:auto;top:0;height:'+h+'px;width:'+w+'px;left:'+left+'px;transform:none;backface-visibility:visible;border-radius:0;cursor:default';
-    fa.appendChild(c);const sh=document.createElement('i');sh.style.cssText='position:absolute;inset:0;background:#1a0f06;opacity:0;pointer-events:none';fa.appendChild(sh);return fa};
-  const strips=[];let parent=O;
-  for(let i=0;i<N;i++){
-    const s=document.createElement('div');
-    s.style.cssText='position:absolute;top:0;left:'+(i?sw:0)+'px;width:'+sw+'px;height:'+h+'px;transform-origin:0 50%;transform-style:preserve-3d';
-    const ff=face(fc,-i*sw,false),bf=face(bc,-(w-(i+1)*sw),true);
-    s.appendChild(ff);s.appendChild(bf);parent.appendChild(s);strips.push({s:s,a:ff.lastChild,b:bf.lastChild});parent=s}
-  bk.appendChild(O);l.style.visibility='hidden';
-  const t0=performance.now(),D=1050,sg=d>0?1:-1,E=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
-  (function fr(now){
-    const p=Math.min(1,(now-t0)/D),e=E(p),th=d>0?-180*e:-180*(1-e),bd=-sg*2.3*Math.sin(p*Math.PI);let cum=0;
-    for(let i=0;i<N;i++){const a=th/N+bd*(.45+.55*i/N);strips[i].s.style.transform='rotateY('+a+'deg)';cum+=a;
-      const sh=Math.min(.45,.4*Math.abs(Math.sin(cum*Math.PI/180)));strips[i].a.style.opacity=sh;strips[i].b.style.opacity=sh}
-    if(p<1)requestAnimationFrame(fr);else{O.remove();l.style.visibility=''}
-  })(t0);
-}
-
-/* ---- smooth page turn: each page is drawn once as an image, then bent in 140 thin slices on a canvas ---- */
-let bmp={},bGen=0,h2cState=0;
-function withH2C(cb){if(window.html2canvas)return cb();if(h2cState===1)return;h2cState=1;
-  const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-  s.onload=()=>{h2cState=2;cb()};s.onerror=()=>{h2cState=3};document.head.appendChild(s)}
-function rasterize(idx){
-  const el=pages[idx];if(!el||idx in bmp)return Promise.resolve();bmp[idx]=null;
-  const c=el.cloneNode(true);c.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));c.querySelectorAll('video,audio,iframe').forEach(e=>e.remove());
-  c.style.cssText='position:fixed;left:-20000px;top:0;width:1000px;height:707px;transform:none;margin:0';
-  document.body.appendChild(c);
-  return window.html2canvas(c,{backgroundColor:'#FEFBF6',scale:1,logging:false,width:1000,height:707,windowWidth:1000,windowHeight:707})
-    .then(cv=>{bmp[idx]=cv},()=>{bmp[idx]=null}).then(()=>c.remove())}
-function rasterAll(gen){withH2C(()=>{let i=0;(function next(){if(gen!==bGen||!built||i>=pages.length)return;rasterize(i++).then(()=>setTimeout(next,220))})()})}
-window.__bmp=()=>bmp;
-function bendCanvas(l,d,L){
-  const F=bmp[(L-1)*2],B=bmp[(L-1)*2+1];
-  const w=l.offsetWidth,h=l.offsetHeight,PAD=Math.round(h*.32),CW=Math.round(w*2),CH=h+PAD*2,dpr=Math.min(window.devicePixelRatio||1,2);
-  const cv=document.createElement('canvas');cv.width=CW*dpr;cv.height=CH*dpr;
-  cv.style.cssText='position:absolute;left:calc(50% - '+w+'px);top:'+(-PAD)+'px;width:'+CW+'px;height:'+CH+'px;pointer-events:none;z-index:1000';
-  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);ctx.imageSmoothingQuality='high';bk.appendChild(cv);l.style.visibility='hidden';
-  const N=140,sw=w/N,FOC=2200,t0=performance.now(),D=window.__BEND_D||1050,sg=d>0?1:-1,E=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
-  (function fr(now){
-    const p=Math.min(1,(now-t0)/D),e=E(p),mag=d>0?180*e:180*(1-e),bd=sg*.2*Math.sin(p*Math.PI);
-    ctx.clearRect(0,0,CW,CH);
-    let x=0,z=0,th=0;const items=[];
-    for(let k=0;k<N;k++){const a=mag/N+bd*(.45+.55*k/N),mid=th+a/2,rad=mid*Math.PI/180,x1=x+sw*Math.cos(rad),z1=z+sw*Math.sin(rad);
-      items.push({k:k,x0:x,z0:z,x1:x1,z1:z1,mid:mid,u:(k+.5)*sw});x=x1;z=z1;th+=a}
-    items.sort((a,b)=>(a.z0+a.z1)-(b.z0+b.z1));
-    for(let q=0;q<N;q++){const it=items[q],s0=FOC/(FOC-it.z0),s1=FOC/(FOC-it.z1),X0=w+it.x0*s0,X1=w+it.x1*s1;
-      const dx=Math.min(X0,X1),dw=Math.abs(X1-X0);if(dw<.02)continue;
-      const front=it.mid<90,img=front?F:B,SW=img.width/N,base=front?it.k*SW:img.width*(1-(it.k+1)/N);
-      const sh=Math.min(.36,.3*Math.abs(Math.sin(it.mid*Math.PI/180))+.14*Math.max(0,1-it.u/(.1*w)));
-      const c0=Math.ceil(dx-.5),c1=Math.floor(dx+dw-.5),srcw=Math.max(.7,SW/dw);
-      ctx.fillStyle='rgba(26,15,6,'+sh.toFixed(3)+')';
-      for(let c=c0;c<=c1;c++){const t=(c+.5-dx)/dw,s=front?(X1>=X0?s0+(s1-s0)*t:s1+(s0-s1)*t):(X1>=X0?s0+(s1-s0)*t:s1+(s0-s1)*t),hh=h*s,y=CH/2-hh/2;
-        const sx=base+(front===(X1>=X0)?t:1-t)*SW-srcw/2;
-        ctx.drawImage(img,sx,0,srcw,img.height,c,y,1,hh);ctx.fillRect(c,y,1,hh)}}
-    if(p<1)requestAnimationFrame(fr);else{cv.remove();l.style.visibility=''}
-  })(t0);
-}
-/* pages are drawn only when they are about to turn (one leaf at a time), never all at once */
-function ensureLeaf(L){
-  if(!window.html2canvas){withH2C(()=>ensureLeaf(L));return}
-  [(L-1)*2,(L-1)*2+1].forEach(idx=>{if(!(idx in bmp))rasterize(idx)});
-}
-function bendAny(l,d){const L=leaves.indexOf(l);
-  if(L>0&&window.html2canvas&&bmp[(L-1)*2]&&bmp[(L-1)*2+1])bendCanvas(l,d,L);else bend(l,d)}
 function turn(d){const t=flipped+d;if(t<0||t>leaves.length)return false;
   const l=d>0?leaves[flipped]:leaves[flipped-1];l.style.zIndex=999;
-  const LI=leaves.indexOf(l);if(LI>0)ensureLeaf(LI);
-  l.classList.add('turning');clearTimeout(l._tt);l._tt=setTimeout(()=>l.classList.remove('turning'),1100);
-  if(d>0)l.classList.add('flipped');else l.classList.remove('flipped');bendAny(l,d);flipped=t;
+  if(d>0)l.classList.add('flipped');else l.classList.remove('flipped');flipped=t;
   bk.classList.toggle('closed',flipped===0);update();
   clearTimeout(l._t);l._t=setTimeout(z,1080);return true}
 function goTo(target){target=Math.max(0,Math.min(leaves.length,target));if(target===flipped)return;
@@ -2012,7 +1926,7 @@ function build(){if(built)return;built=true;root.classList.add('book-mode');root
     const f=page(pages[j*2],String(j*2+1));f.classList.add('front');l.appendChild(f);
     const nb=pages[j*2+1];const b=page(nb||null,nb?String(j*2+2):'');b.classList.add('back');l.appendChild(b);
     bk.appendChild(l);leaves.push(l)}
-  flipped=0;z();size();update();bk.addEventListener('click',onPage);bmp={};
+  flipped=0;z();size();update();bk.addEventListener('click',onPage);
   if(window.ResizeObserver){ro=new ResizeObserver(fit);ro.observe(bk)}
   setTimeout(fit,700);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit)}
 function unbuild(){if(!built)return;built=false;liveMoved.reverse().forEach(o=>o.parent.insertBefore(o.el,o.next));liveMoved=[];if(ro){ro.disconnect();ro=null}
