@@ -399,8 +399,11 @@ input[type=range]{width:100%;accent-color:var(--gold);height:28px}
   -webkit-mask-image:radial-gradient(circle 280px at var(--mx,-999px) var(--my,-999px),#000 0,rgba(0,0,0,.6) 42%,transparent 100%);
   mask-image:radial-gradient(circle 280px at var(--mx,-999px) var(--my,-999px),#000 0,rgba(0,0,0,.6) 42%,transparent 100%);
 }
-.hero-slab,.lk-art:not(.lk-neg),.tag-slab{transition:filter .45s ease,transform .25s ease-out}
-.hero-slab:hover,.lk-art:not(.lk-neg):hover,.tag-slab:hover{filter:invert(1) hue-rotate(180deg)}
+.inv-host{position:relative;isolation:isolate}
+.inv-spot{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s ease;z-index:3;border-radius:inherit;
+  background:radial-gradient(circle 120px at var(--mx,50%) var(--my,50%),#fff 0,#fff 40%,rgba(255,255,255,.55) 68%,rgba(255,255,255,0) 100%);
+  mix-blend-mode:difference}
+.inv-host.inv-on .inv-spot{opacity:1}
 
 /* ---------- book mode: one section per page, a leather book lying on the marble ---------- */
 .book-mode,.book-mode body{overflow:hidden;height:100%}
@@ -584,8 +587,6 @@ input[type=range]{width:100%;accent-color:var(--gold);height:28px}
 
 .bend .pg{cursor:default}
 
-.m-vars figure:nth-child(1) .m-t,.m-vars figure:nth-child(3) .m-t{transition:filter .45s ease}
-.m-vars figure:nth-child(1) .m-t:hover,.m-vars figure:nth-child(3) .m-t:hover{filter:invert(1) hue-rotate(180deg)}
 .fly{position:fixed;left:0;top:0;z-index:110;max-width:none;transform-origin:0 0;transition:transform 1.05s cubic-bezier(.65,0,.2,1);will-change:transform;pointer-events:none;
   box-shadow:0 30px 70px -30px rgba(0,0,0,.6)}
 
@@ -1081,7 +1082,24 @@ input[type=range]{width:100%;accent-color:var(--gold);height:28px}
     if(cx<-900){cx=e.clientX;cy=e.clientY}tx=e.clientX;ty=e.clientY;el.style.opacity='1';if(!raf)raf=requestAnimationFrame(frame)},{passive:true});
   document.addEventListener('mouseleave',function(){el.style.opacity='0'});
   window.addEventListener('scroll',place,{passive:true});place();
-})();</script></main>
+})();</script><script>(function(){
+  var SEL='.hero-slab,.lk-art:not(.lk-neg),.tag-slab,.m-vars figure:nth-child(1) .m-t,.m-vars figure:nth-child(3) .m-t';
+  if(matchMedia('(hover:none)').matches)return;
+  var cur=null;
+  function spot(el){var s=el.querySelector(':scope > .inv-spot');if(!s){s=document.createElement('i');s.className='inv-spot';s.setAttribute('aria-hidden','true');el.appendChild(s)}return s}
+  document.addEventListener('pointermove',function(e){
+    if(e.pointerType==='touch')return;
+    var t=e.target.closest&&e.target.closest(SEL);
+    if(cur&&cur!==t){cur.classList.remove('inv-on');cur=null}
+    if(!t)return;
+    spot(t);t.classList.add('inv-host');cur=t;
+    var r=t.getBoundingClientRect();
+    t.style.setProperty('--mx',(e.clientX-r.left)+'px');t.style.setProperty('--my',(e.clientY-r.top)+'px');
+    t.classList.add('inv-on');
+  },{passive:true});
+  document.documentElement.addEventListener('mouseleave',function(){if(cur){cur.classList.remove('inv-on');cur=null}});
+})();</script>
+</main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
