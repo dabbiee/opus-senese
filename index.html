@@ -400,10 +400,11 @@ input[type=range]{width:100%;accent-color:var(--gold);height:28px}
   mask-image:radial-gradient(circle 280px at var(--mx,-999px) var(--my,-999px),#000 0,rgba(0,0,0,.6) 42%,transparent 100%);
 }
 .inv-host{position:relative;isolation:isolate}
-.inv-spot{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s ease;z-index:3;border-radius:inherit;
-  background:radial-gradient(circle 120px at var(--mx,50%) var(--my,50%),#fff 0,#fff 40%,rgba(255,255,255,.55) 68%,rgba(255,255,255,0) 100%);
-  mix-blend-mode:difference}
-.inv-host.inv-on .inv-spot{opacity:1}
+.inv-clone{position:absolute !important;left:0;top:0;width:100% !important;height:100% !important;max-width:none !important;margin:0 !important;transform:none !important;box-sizing:border-box;pointer-events:none;z-index:3;opacity:0;transition:opacity .25s ease;
+  filter:grayscale(1) invert(1) brightness(3.2) contrast(2);
+  -webkit-mask-image:radial-gradient(circle 62px at var(--mx,50%) var(--my,50%),#000 72%,transparent 100%);
+  mask-image:radial-gradient(circle 62px at var(--mx,50%) var(--my,50%),#000 72%,transparent 100%)}
+.inv-host.inv-on > .inv-clone{opacity:1}
 
 /* ---------- book mode: one section per page, a leather book lying on the marble ---------- */
 .book-mode,.book-mode body{overflow:hidden;height:100%}
@@ -1086,7 +1087,9 @@ input[type=range]{width:100%;accent-color:var(--gold);height:28px}
   var SEL='.hero-slab,.lk-art:not(.lk-neg),.tag-slab,.m-vars figure:nth-child(1) .m-t,.m-vars figure:nth-child(3) .m-t';
   if(matchMedia('(hover:none)').matches)return;
   var cur=null;
-  function spot(el){var s=el.querySelector(':scope > .inv-spot');if(!s){s=document.createElement('i');s.className='inv-spot';s.setAttribute('aria-hidden','true');el.appendChild(s)}return s}
+  function spot(el){var s=el.querySelector(':scope > .inv-clone');if(!s){s=el.cloneNode(true);s.removeAttribute('id');s.removeAttribute('style');
+      s.querySelectorAll('[id]').forEach(function(n){n.removeAttribute('id')});s.querySelectorAll('.inv-clone').forEach(function(n){n.remove()});
+      s.classList.remove('inv-host','inv-on');s.classList.add('inv-clone');s.setAttribute('aria-hidden','true');el.appendChild(s)}return s}
   document.addEventListener('pointermove',function(e){
     if(e.pointerType==='touch')return;
     var t=e.target.closest&&e.target.closest(SEL);
